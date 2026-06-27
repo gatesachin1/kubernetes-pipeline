@@ -1,0 +1,32 @@
+version: 0.2
+
+env:
+  variables:
+    ECR_REGISTRY: "654654392564.dkr.ecr.us-east-1.amazonaws.com"
+    ECR_REPO: "shopk8s"
+    AWS_DEFAULT_REGION: "us-east-1"
+
+phases:
+  pre_build:
+    commands:
+      - echo Fetching kubeconfig from SSM Parameter Store...
+      - aws ssm get-parameter --name "/shopk8s/kubeconfig" --with-decryption --region us-east-1 --query Parameter.Value --output text > /tmp/kubeconfig
+      - export KUBECONFIG=/tmp/kubeconfig
+      - echo Loading image tag from CI artifact...
+      - cat image_tag.env
+      - source image_tag.env
+      - echo Deploying image tag $IMAGE_TAG
+      - kubectl version --client
+
+  build:
+    commands:
+      - echo Updating deployment image...
+      - kubectl set image deployment/shopk8s shopk8s=654654392564.dkr.ecr.us-east-1.amazonaws.com/shopk8s:$IMAGE_TAG --kubeconfig=/tmp/kubeconfig
+      - echo Waiting for rollout to complete...
+      - kubectl rollout status deployment/shopk8s --timeout=120s --kubeconfig=/tmp/kubeconfig
+
+  post_build:
+    commands:
+      - echo Deployment completed on `date`
+      - kubectl get pods -l app=shopk8s --kubeconfig=/tmp/kubeconfig
+      - kubectl get svc shopk8s-svc --kubeconfig=/tmp/kubeconfig

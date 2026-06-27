@@ -1,0 +1,38 @@
+version: 0.2
+
+env:
+  variables:
+    ECR_REGISTRY: "654654392564.dkr.ecr.us-east-1.amazonaws.com"
+    ECR_REPO: "shopk8s"
+    AWS_DEFAULT_REGION: "us-east-1"
+
+phases:
+  pre_build:
+    commands:
+      - echo Logging into Amazon ECR...
+      - aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 654654392564.dkr.ecr.us-east-1.amazonaws.com
+      - IMAGE_TAG=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c1-7)
+      - echo Image tag will be $IMAGE_TAG
+
+  build:
+    commands:
+      - echo Build started on `date`
+      - echo Building Docker image...
+      - docker build -t shopk8s .
+      - docker tag shopk8s:latest 654654392564.dkr.ecr.us-east-1.amazonaws.com/shopk8s:latest
+      - docker tag shopk8s:latest 654654392564.dkr.ecr.us-east-1.amazonaws.com/shopk8s:$IMAGE_TAG
+
+  post_build:
+    commands:
+      - echo Pushing image to ECR...
+      - docker push 654654392564.dkr.ecr.us-east-1.amazonaws.com/shopk8s:latest
+      - docker push 654654392564.dkr.ecr.us-east-1.amazonaws.com/shopk8s:$IMAGE_TAG
+      - echo Push completed on `date`
+      - echo Writing image tag to file...
+      - echo IMAGE_TAG=$IMAGE_TAG > image_tag.env
+      - cat image_tag.env
+
+artifacts:
+  files:
+    - image_tag.env
+    - k8s/**/*
