@@ -14,7 +14,7 @@ phases:
       - export KUBECONFIG=/tmp/kubeconfig
       - echo Loading image tag from CI artifact...
       - cat image_tag.env
-      - source image_tag.env
+      - export $(cat image_tag.env)
       - echo Deploying image tag $IMAGE_TAG
       - kubectl version --client
 
